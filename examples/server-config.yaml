@@ -1,0 +1,71 @@
+# GoFakeIP Server Configuration Example
+# Complete configuration with all available options
+
+server:
+  # Address and port to listen on for proxy connections
+  # Use 0.0.0.0 to listen on all interfaces, or specify a specific IP
+  listen_address: "0.0.0.0:1080"
+
+  # Source IP address for outbound connections
+  # CRITICAL: This IP MUST be assigned to one of the server's network interfaces
+  # Destinations will see this IP as the connection source
+  bind_ip: "203.0.113.50"  # Replace with your server's actual IP
+
+  # Proxy protocols to enable
+  # Options: socks5, http (or both)
+  protocols:
+    - socks5
+    - http
+
+  # Maximum number of concurrent connections
+  # Adjust based on system resources and file descriptor limits (ulimit -n)
+  max_connections: 1000
+
+  # Timeout for idle connections (Go duration format)
+  # Examples: 30s, 5m, 1h30m
+  connection_timeout: 30s
+
+# Authentication configuration
+auth:
+  # Whether to require authentication (highly recommended for production)
+  enabled: true
+
+  # Authentication method: none | username_password
+  method: username_password
+
+  # Username for authentication
+  username: "admin"
+
+  # Password hash (bcrypt) - NEVER use plain text passwords
+  # Generate with: htpasswd -nbB admin mypassword
+  # Or future feature: gofakeip-server hash-password mypassword
+  # This example hash is for password "changeme123" - CHANGE THIS!
+  password_hash: "$2a$10$rZQk3pXx8kZJmG7Z5vY8AO0.8mVFqK4kV1YzXmQzLpYvEqZ7LqK5S"
+
+# HTTP header manipulation (optional - distorting proxy feature)
+# NOTE: This is application-layer only, does not affect network-layer source IP
+http_headers:
+  # Value to inject in X-Forwarded-For header (empty = disabled)
+  inject_x_forwarded_for: "198.51.100.25"
+
+  # Value to inject in X-Real-IP header (empty = disabled)
+  inject_x_real_ip: "198.51.100.25"
+
+  # Value to inject in Via header (empty = disabled)
+  inject_via: "1.1 gofakeip-proxy"
+
+  # Remove existing proxy headers before injecting new ones
+  remove_existing: true
+
+# Logging configuration
+logging:
+  # Log level: debug | info | warn | error
+  level: info
+
+  # Log format: text | json
+  # Use json for log aggregation tools (ELK, Splunk, etc.)
+  format: text
+
+  # Log file path (empty = stdout)
+  # Ensure directory exists and is writable
+  file: "/var/log/gofakeip/server.log"

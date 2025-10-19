@@ -1,0 +1,31 @@
+# GoFakeIP Client Configuration Example
+# Used with: gofakeip-client setup --config client-config.yaml
+
+proxy:
+  # Proxy server address and port
+  # Format: HOST:PORT where HOST is IP or hostname
+  address: "203.0.113.50:1080"
+
+# Traffic redirection settings
+redirection:
+  # Specific ports to redirect (empty = all ports)
+  # Remove this section or use empty list to redirect all traffic
+  ports:
+    - 80    # HTTP
+    - 443   # HTTPS
+    - 8080  # Alternative HTTP
+
+  # Protocol to redirect: tcp | udp | both
+  protocol: tcp
+
+  # Network interface (platform-specific)
+  # Linux: optional (default: all interfaces via OUTPUT chain)
+  # Windows: not applicable (portproxy is interface-agnostic)
+  # macOS: recommended (default: primary interface)
+  # Example: "eth0" (Linux), "en0" (macOS)
+  interface: ""
+
+# Platform override (for testing only - leave empty for auto-detection)
+# Valid values: linux | windows | darwin
+# platform:
+#   override: ""

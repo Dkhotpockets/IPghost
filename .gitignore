@@ -1,0 +1,56 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+gofakeip-server
+gofakeip-client
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Configuration files with secrets (never commit)
+.env
+.env.*
+*secret*
+*credential*
+*.key
+*.pem
+
+# Log files
+*.log
+
+# Build artifacts
+dist/
+release/
+
+# Local development configs
+*.local.yaml
+*.local.yml
+
+# State files
+client-state.json
+server-state.json

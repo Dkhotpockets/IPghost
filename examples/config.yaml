@@ -1,0 +1,11 @@
+
+server:
+  listen_address: 0.0.0.0:8080
+  bind_ip: 192.168.65.3
+  protocols:
+    - http
+    - socks5
+  max_connections: 1000
+  connection_timeout: 30s
+logging:
+  level: info

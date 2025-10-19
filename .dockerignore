@@ -1,0 +1,62 @@
+# Build artifacts
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test and coverage files
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Documentation (except examples)
+*.md
+!README.md
+docs/
+
+# Specification files
+specs/
+.specify/
+.specifyrc.js
+
+# Environment and secrets
+.env
+.env.*
+*secret*
+*credential*
+*.pem
+*.key
+
+# Docker files (don't need in build context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Agent files
+.claude/
+
+# OS-specific
+Thumbs.db

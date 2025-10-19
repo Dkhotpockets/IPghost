@@ -1,0 +1,17 @@
+# GoFakeIP Server Configuration - Minimal Example
+# Quick start configuration for development/testing
+
+server:
+  # Listen on all interfaces, port 1080
+  listen_address: "0.0.0.0:1080"
+
+  # IMPORTANT: Replace with your server's actual IP address
+  # This IP must be assigned to a network interface on this machine
+  bind_ip: "203.0.113.50"
+
+# All other settings will use defaults:
+# - Protocols: SOCKS5 and HTTP
+# - Max connections: 1000
+# - Connection timeout: 30s
+# - Authentication: Disabled (NOT recommended for production)
+# - Logging: Info level to stdout

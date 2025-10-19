@@ -1,0 +1,78 @@
+services:
+  gofakeip-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gofakeip:latest
+    container_name: gofakeip-proxy
+
+    # Network configuration
+    # Use 'host' network mode to allow the container to bind to host's IP addresses
+    # This is necessary for IP masking to work properly
+    # network_mode: host
+    ports:
+      - "8888:8888"
+
+    # Alternative: Bridge mode (if host mode is not available)
+    # Uncomment the following and comment out 'network_mode: host' above
+    # ports:
+  #   - "8888:8888"
+    # networks:
+    #   - gofakeip-net
+
+    # Environment variables for configuration
+    environment:
+      # Set this to your server's external IP for IP masking
+      - BIND_IP=192.168.1.108
+  # - PROTOCOLS=http
+      - LOG_LEVEL=info
+      - MAX_CONNECTIONS=1000
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Optional: Mount configuration file
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Read-only root filesystem (recommended for security)
+    # read_only: true
+    # tmpfs:
+    #   - /tmp
+
+# Optional: Custom network (only if not using host mode)
+# networks:
+#   gofakeip-net:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.20.0.0/16

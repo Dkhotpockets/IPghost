@@ -1,0 +1,15 @@
+# GoFakeIP Client Configuration - Redirect All Traffic
+# This configuration redirects ALL TCP traffic through the proxy
+
+proxy:
+  address: "203.0.113.50:1080"
+
+redirection:
+  # Empty ports list = redirect all ports
+  ports: []
+
+  # Redirect TCP traffic
+  protocol: tcp
+
+# Usage:
+# sudo gofakeip-client setup --config client-config-all-traffic.yaml

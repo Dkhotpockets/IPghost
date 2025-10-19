@@ -1,0 +1,21 @@
+# GoFakeIP Server Configuration - No Authentication
+# WARNING: Open proxy - use only in controlled/trusted environments
+
+server:
+  listen_address: "0.0.0.0:1080"
+  bind_ip: "203.0.113.50"  # Replace with your server's IP
+  protocols:
+    - socks5
+    - http
+  max_connections: 10000
+
+# Authentication disabled (open proxy)
+# SECURITY WARNING: Anyone who can reach this port can use the proxy
+# Only use in trusted networks or with firewall restrictions
+auth:
+  enabled: false
+
+logging:
+  level: info
+  format: json
+  file: "/var/log/gofakeip/server.log"
