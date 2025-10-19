@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/agents/claude-code/commands/speckit.constitution.md -o speckit.constitution.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/agents/claude-code/commands/speckit.specify.md -o speckit.specify.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/agents/claude-code/commands/speckit.plan.md -o speckit.plan.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/agents/claude-code/commands/speckit.tasks.md -o speckit.tasks.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/agents/claude-code/commands/speckit.implement.md -o speckit.implement.md)",
+      "Bash(tree -L 3)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/constitution.md -o speckit.constitution.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/specify.md -o speckit.specify.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/plan.md -o speckit.plan.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/tasks.md -o speckit.tasks.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/implement.md -o speckit.implement.md)",
+      "Bash(curl -sL https://api.github.com/repos/github/spec-kit/contents/templates/commands)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/analyze.md -o speckit.analyze.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/checklist.md -o speckit.checklist.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/clarify.md -o speckit.clarify.md)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
