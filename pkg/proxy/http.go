@@ -1,11 +1,14 @@
-
 package proxy
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"time"
+
+	"github.com/yourorg/gofakeip/pkg/common"
 )
 
 // hasPort checks if the host includes a port
@@ -14,9 +17,46 @@ func hasPort(host string) bool {
 	return err == nil
 }
 
+type httpProxy struct {
+	server   *http.Server
+	listener net.Listener
+	logger   common.Logger
+}
+
+func NewHTTPProxy(listenAddr string, bindIP net.IP, timeout time.Duration, logger common.Logger) (HTTPServer, error) {
+	listener, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen: %w", err)
+	}
+
+	return &httpProxy{
+		server: &http.Server{
+			Handler: HTTPProxyHandler(bindIP, timeout),
+		},
+		listener: listener,
+		logger:   logger,
+	}, nil
+}
+
+func (h *httpProxy) Start() error {
+	h.logger.Info("Starting HTTP proxy on %s", h.listener.Addr().String())
+	go func() {
+		if err := h.server.Serve(h.listener); err != nil && err != http.ErrServerClosed {
+			h.logger.Error("HTTP server error: %v", err)
+		}
+	}()
+	return nil
+}
+
+func (h *httpProxy) Shutdown(ctx context.Context) error {
+	h.logger.Info("Shutting down HTTP proxy...")
+	return h.server.Shutdown(ctx)
+}
+
 // HTTPProxyHandler handles HTTP proxy requests (CONNECT, GET, POST)
-func HTTPProxyHandler(bindIP net.IP) http.Handler {
+func HTTPProxyHandler(bindIP net.IP, timeout time.Duration) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Handle CONNECT requests (for HTTPS)
 		if r.Method == http.MethodConnect {
 			// Handle CONNECT (tunneling)
 			host := r.Host
@@ -29,7 +69,7 @@ func HTTPProxyHandler(bindIP net.IP) http.Handler {
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			// Hijack connection
+			// Hijack the connection to forward raw TCP data
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
@@ -44,37 +84,29 @@ func HTTPProxyHandler(bindIP net.IP) http.Handler {
 			go proxyStream(conn, clientConn)
 			return
 		}
-		// Handle GET/POST forwarding
+
+		// Handle GET/POST requests
 		// For HTTP proxy, the request URL should be absolute
 		if !r.URL.IsAbs() {
 			http.Error(w, "Request URL must be absolute for proxy", http.StatusBadRequest)
 			return
 		}
 
-		// Create outbound request
+		// Create a new request with the same method, URL, and body
 		outReq := r.Clone(r.Context())
 		outReq.RequestURI = "" // Must clear RequestURI for client requests
 
 		// Remove hop-by-hop headers
 		removeHopByHopHeaders(outReq.Header)
 
-		// Ensure the outbound address always has a port
-		targetHost := outReq.URL.Host
-		if !hasPort(targetHost) {
-			if outReq.URL.Scheme == "https" {
-				targetHost += ":443"
-			} else {
-				targetHost += ":80"
-			}
-		}
-
+		// Create a new transport with the masked IP
 		transport := &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// Always use the correct host:port
-				return DialWithMaskedIP(network, targetHost, bindIP)
+				return DialWithMaskedIP(network, addr, bindIP, timeout)
 			},
 		}
 
+		// Send the request and get the response
 		resp, err := transport.RoundTrip(outReq)
 		if err != nil {
 			http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
@@ -82,7 +114,7 @@ func HTTPProxyHandler(bindIP net.IP) http.Handler {
 		}
 		defer resp.Body.Close()
 
-		// Copy response headers
+		// Copy the response headers and status code to the client
 		copyHeader(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
 		io.Copy(w, resp.Body)

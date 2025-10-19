@@ -35,20 +35,27 @@ func (l LogLevel) String() string {
 	}
 }
 
+type Logger interface {
+	Debug(msg string, args ...interface{})
+	Info(msg string, args ...interface{})
+	Warn(msg string, args ...interface{})
+	Error(msg string, args ...interface{})
+}
+
 // Logger provides structured logging
-type Logger struct {
+type loggerImpl struct {
 	level  LogLevel
 	output io.Writer
 	logger *log.Logger
 }
 
 // NewLogger creates a new Logger instance
-func NewLogger(level LogLevel, output io.Writer) *Logger {
+func NewLogger(level LogLevel, output io.Writer) Logger {
 	if output == nil {
 		output = os.Stdout
 	}
 
-	return &Logger{
+	return &loggerImpl{
 		level:  level,
 		output: output,
 		logger: log.New(output, "", 0),
@@ -56,40 +63,40 @@ func NewLogger(level LogLevel, output io.Writer) *Logger {
 }
 
 // Debug logs a debug message
-func (l *Logger) Debug(format string, args ...interface{}) {
+func (l *loggerImpl) Debug(format string, args ...interface{}) {
 	if l.level <= LogLevelDebug {
 		l.log(LogLevelDebug, format, args...)
 	}
 }
 
 // Info logs an info message
-func (l *Logger) Info(format string, args ...interface{}) {
+func (l *loggerImpl) Info(format string, args ...interface{}) {
 	if l.level <= LogLevelInfo {
 		l.log(LogLevelInfo, format, args...)
 	}
 }
 
 // Warn logs a warning message
-func (l *Logger) Warn(format string, args ...interface{}) {
+func (l *loggerImpl) Warn(format string, args ...interface{}) {
 	if l.level <= LogLevelWarn {
 		l.log(LogLevelWarn, format, args...)
 	}
 }
 
 // Error logs an error message
-func (l *Logger) Error(format string, args ...interface{}) {
+func (l *loggerImpl) Error(format string, args ...interface{}) {
 	if l.level <= LogLevelError {
 		l.log(LogLevelError, format, args...)
 	}
 }
 
-func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
+func (l *loggerImpl) log(level LogLevel, format string, args ...interface{}) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	message := fmt.Sprintf(format, args...)
 	l.logger.Printf("[%s] %s %s", level.String(), timestamp, message)
 }
 
 // SetLevel changes the logging level
-func (l *Logger) SetLevel(level LogLevel) {
+func (l *loggerImpl) SetLevel(level LogLevel) {
 	l.level = level
 }

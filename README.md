@@ -41,6 +41,8 @@ network interface (not 127.0.0.1 for remote connections).
 
 ### Client (Windows - Coming Soon)
 
+**Note:** The Linux and macOS clients are not yet implemented.
+
 ```powershell
 # Configure traffic redirection (requires Administrator)
 .\bin\gofakeip-client.exe setup --proxy <SERVER_IP>:8080

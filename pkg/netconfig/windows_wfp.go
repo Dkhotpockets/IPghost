@@ -94,8 +94,7 @@ func (w *WindowsConfigurator) Teardown() error {
 	// Remove all GoFakeIP-created rules
 	for _, rule := range rules {
 		if err := w.removePortProxyRule(rule); err != nil {
-			// Log but continue removing other rules
-			continue
+			return fmt.Errorf("failed to remove rule %s: %w", rule.ID, err)
 		}
 	}
 

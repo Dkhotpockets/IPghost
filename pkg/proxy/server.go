@@ -4,43 +4,50 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"sync"
+	"time"
+
+	"github.com/yourorg/gofakeip/pkg/common"
 )
 
 // ProxyServer represents the GoFakeIP proxy server instance
 // Fields per data-model.md: ListenAddress, BindIP, Protocols, state management
 type ProxyServer struct {
-	ListenAddress string      // Address to listen on (host:port)
-	BindIP        net.IP      // IP to bind for outbound connections (masked IP)
-	Protocols     []string    // Supported protocols (e.g., ["socks5", "http"])
-	MaxConns      int         // Maximum concurrent connections
+	ListenAddress string        // Address to listen on (host:port)
+	BindIP        net.IP        // IP to bind for outbound connections (masked IP)
+	Protocols     []string      // Supported protocols (e.g., ["socks5", "http"])
+	MaxConns      int           // Maximum concurrent connections
+	Timeout       time.Duration // Timeout for outbound connections
 
 	pool          *ConnectionPool
-	httpServer    *http.Server
-	httpListener  net.Listener
-	socks5Listener net.Listener
+	httpServer    HTTPServer
+	socks5Server  SOCKS5Server
 	mu            sync.RWMutex
-	state         string      // Server state (e.g., "starting", "running", "stopped")
+	state         string        // Server state (e.g., "starting", "running", "stopped")
 	shutdownCh    chan struct{}
-	logger        Logger
+	logger        common.Logger
 }
 
-// Logger interface for server logging
-type Logger interface {
-	Info(msg string, args ...interface{})
-	Error(msg string, args ...interface{})
-	Debug(msg string, args ...interface{})
-	Warn(msg string, args ...interface{})
+// HTTPServer interface for HTTP proxy server operations
+type HTTPServer interface {
+	Start() error
+	Shutdown(ctx context.Context) error
+}
+
+// SOCKS5Server interface for SOCKS5 proxy server operations
+type SOCKS5Server interface {
+	Start() error
+	Stop() error
 }
 
 // NewProxyServer creates a new ProxyServer instance
-func NewProxyServer(listenAddr string, bindIP net.IP, protocols []string, maxConns int, logger Logger) *ProxyServer {
+func NewProxyServer(listenAddr string, bindIP net.IP, protocols []string, maxConns int, timeout time.Duration, logger common.Logger) *ProxyServer {
 	return &ProxyServer{
 		ListenAddress: listenAddr,
 		BindIP:        bindIP,
 		Protocols:     protocols,
 		MaxConns:      maxConns,
+		Timeout:       timeout,
 		pool:          NewConnectionPool(maxConns),
 		state:         "stopped",
 		shutdownCh:    make(chan struct{}),
@@ -62,7 +69,13 @@ func (s *ProxyServer) Start() error {
 
 	// Start HTTP proxy if enabled
 	if s.hasProtocol("http") {
-		if err := s.startHTTPProxy(); err != nil {
+		httpProxy, err := NewHTTPProxy(s.ListenAddress, s.BindIP, s.Timeout, s.logger)
+		if err != nil {
+			s.setState("stopped")
+			return fmt.Errorf("failed to create HTTP proxy: %w", err)
+		}
+		s.httpServer = httpProxy
+		if err := s.httpServer.Start(); err != nil {
 			s.setState("stopped")
 			return fmt.Errorf("failed to start HTTP proxy: %w", err)
 		}
@@ -71,7 +84,13 @@ func (s *ProxyServer) Start() error {
 
 	// Start SOCKS5 proxy if enabled
 	if s.hasProtocol("socks5") {
-		if err := s.startSocks5Proxy(); err != nil {
+		socks5Proxy, err := NewSocks5Proxy(s.BindIP, s.ListenAddress, s.Timeout, s.logger)
+		if err != nil {
+			s.setState("stopped")
+			return fmt.Errorf("failed to create SOCKS5 proxy: %w", err)
+		}
+		s.socks5Server = socks5Proxy
+		if err := s.socks5Server.Start(); err != nil {
 			s.setState("stopped")
 			return fmt.Errorf("failed to start SOCKS5 proxy: %w", err)
 		}
@@ -107,8 +126,10 @@ func (s *ProxyServer) Stop() error {
 	}
 
 	// Stop SOCKS5 server
-	if s.socks5Listener != nil {
-		s.socks5Listener.Close()
+	if s.socks5Server != nil {
+		if err := s.socks5Server.Stop(); err != nil {
+			s.logger.Error("SOCKS5 server shutdown error: %v", err)
+		}
 	}
 
 	s.setState("stopped")
@@ -138,44 +159,6 @@ func (s *ProxyServer) hasProtocol(protocol string) bool {
 		}
 	}
 	return false
-}
-
-// startHTTPProxy initializes the HTTP proxy server
-func (s *ProxyServer) startHTTPProxy() error {
-	listener, err := net.Listen("tcp", s.ListenAddress)
-	if err != nil {
-		return fmt.Errorf("failed to listen: %w", err)
-	}
-
-	s.httpListener = listener
-	s.httpServer = &http.Server{
-		Handler: HTTPProxyHandler(s.BindIP),
-	}
-
-	go func() {
-		if err := s.httpServer.Serve(listener); err != nil && err != http.ErrServerClosed {
-			s.logger.Error("HTTP server error: %v", err)
-		}
-	}()
-
-	return nil
-}
-
-// startSocks5Proxy initializes the SOCKS5 proxy server
-func (s *ProxyServer) startSocks5Proxy() error {
-	listener, stop, err := NewSocks5Server(s.BindIP, s.ListenAddress)
-	if err != nil {
-		return fmt.Errorf("failed to start SOCKS5 proxy: %w", err)
-	}
-
-	s.socks5Listener = listener
-
-	go func() {
-		<-s.shutdownCh
-		stop()
-	}()
-
-	return nil
 }
 
 // GetConnectionCount returns the current number of active connections

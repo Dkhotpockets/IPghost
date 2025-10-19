@@ -31,14 +31,13 @@ func TestSocks5Handler_ConnectionFlow(t *testing.T) {
         }
     }()
 
-    // Start SOCKS5 server
-    bindIP := net.ParseIP("127.0.0.1")
-    ln, stop, err := proxy.NewSocks5Server(bindIP, "127.0.0.1:0")
-    if err != nil {
-        t.Skipf("SOCKS5 server could not start: %v", err)
-    }
-    defer stop()
-
+    	// Start SOCKS5 server
+    	bindIP := net.ParseIP("127.0.0.1")
+    	ln, stop, err := proxy.NewSocks5Server(bindIP, "127.0.0.1:0", 10*time.Second)
+    	if err != nil {
+    		t.Skipf("SOCKS5 server could not start: %v", err)
+    	}
+    	defer stop()
     // Give server a moment to start
     time.Sleep(100 * time.Millisecond)
 

@@ -17,8 +17,109 @@ GoFakeIP is a cross-platform SOCKS5/HTTP proxy server and client configuration u
 **Current Status:**
 
 *   The proxy server is fully functional.
-*   The Windows client is implemented but has a build issue.
+*   The Windows client is implemented.
 *   The Linux and macOS clients are not yet implemented.
+
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         User's Machine                           │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │              GoFakeIP Client (gofakeip-client)             │ │
+│  │                                                             │ │
+│  │  ┌──────────────────────────────────────────────────────┐  │ │
+│  │  │         cmd/gofakeip-client/main.go                  │  │ │
+│  │  │  - CLI argument parsing                              │  │ │
+│  │  │  - Privilege verification                             │  │ │
+│  │  │  - Platform detection                                │  │ │
+│  │  └────────────────┬─────────────────────────────────────┘  │ │
+│  │                   │                                         │ │
+│  │                   ▼                                         │ │
+│  │  ┌──────────────────────────────────────────────────────┐  │ │
+│  │  │      pkg/netconfig (Cross-Platform Abstraction)      │  │ │
+│  │  │                                                       │  │ │
+│    │  interface NetworkConfigurator {                     │  │ │
+│  │    Setup(proxyAddr) error                            │  │ │
+│  │    Teardown() error                                  │  │ │
+│  │    Status() (ConfigState, error)                     │  │ │
+│  │    CheckPrivileges() error                           │  │ │
+│  │  }                                                    │  │ │
+│  │  └────────────────┬─────────────────────────────────────┘  │ │
+│  │                   │                                         │ │
+│  │       ┌───────────┼───────────┬───────────────────┐        │ │
+│  │       ▼           ▼           ▼                   ▼        │ │
+│  │  ┌────────┐  ┌────────┐  ┌─────────┐       ┌──────────┐  │ │
+│  │  │ Linux  │  │Windows │  │  macOS  │       │  Input   │  │ │
+│  │  │Impl    │  │ Impl   │  │  Impl   │       │Validator │  │ │
+│  │  │        │  │        │  │         │       │          │  │ │
+│  │  │iptables│  │WFP/    │  │  pfctl  │       │Sanitizer │  │ │
+│  │  │wrapper │  │netsh   │  │ wrapper │       │          │  │ │
+│  │  └────┬───┘  └───┬────┘  └────┬────┘       └──────────┘  │ │
+│  └───────│──────────│──────────────│──────────────────────────┘ │
+│          │          │              │                            │
+│          ▼          ▼              ▼                            │
+│     ┌────────────────────────────────────┐                     │
+│     │      OS Network Stack (Kernel)     │                     │
+│     │  Netfilter  │   WFP   │     pf     │                     │
+│     └────────────────┬───────────────────┘                     │
+│                      │                                         │
+│            Traffic Redirection via NAT/REDIRECT                │
+│                      │                                         │
+└──────────────────────┼─────────────────────────────────────────┘
+                       │
+                       │ Proxied Traffic
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Remote Proxy Server                           │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │            GoFakeIP Server (gofakeip-server)               │ │
+│  │                                                             │ │
+│  │  ┌──────────────────────────────────────────────────────┐  │ │
+│  │  │         cmd/gofakeip-server/main.go                  │  │ │
+│  │  │  - Server initialization                             │  │ │
+│  │  │  - Configuration loading (fake IP, listen addr)      │  │ │
+│  │  └────────────────┬─────────────────────────────────────┘  │ │
+│  │                   │                                         │ │
+│  │                   ▼                                         │ │
+│  │  ┌──────────────────────────────────────────────────────┐  │ │
+│  │  │            pkg/proxy (Proxy Core)                    │  │ │
+│  │  │                                                       │  │ │
+│  │  │  ┌─────────────────┐    ┌──────────────────────┐    │  │ │
+│  │  │  │  SOCKS5 Handler │    │  HTTP Proxy Handler  │    │  │ │
+│  │  │  │  - Auth (opt)   │    │  - CONNECT method    │    │  │ │
+│  │  │  │  - CONNECT cmd  │    │  - GET/POST proxy    │    │  │ │
+│  │  │  └────────┬────────┘    └──────────┬───────────┘    │  │ │
+│  │  │           │                        │                 │  │ │
+│  │  │           └────────────┬───────────┘                 │  │ │
+│  │  │                        │                             │  │ │
+│  │  │                        ▼                             │  │ │
+│  │  │           ┌─────────────────────────┐               │  │ │
+│  │  │           │  Connection Pool Mgr    │               │  │ │
+│  │  │           │  - Concurrent handling  │               │  │ │
+│  │  │           │  - Source IP masking    │               │  │ │
+│  │  │           │  - Error handling       │               │  │ │
+│  │  │           └──────────┬──────────────┘               │  │ │
+│  │  └──────────────────────│──────────────────────────────┘  │ │
+│  │                         │                                  │ │
+│  │                         ▼                                  │ │
+│  │            ┌─────────────────────────┐                     │ │
+│  │            │   IP Masking Layer      │                     │ │
+│  │            │   (Fake IP injection)   │                     │ │
+│  │            └──────────┬──────────────┘                     │ │
+│  └───────────────────────┼──────────────────────────────────┘ │
+│                          │                                     │
+└──────────────────────────┼─────────────────────────────────────┘
+                           │
+                           │ Outbound connection with FAKE_IP as source
+                           │
+                           ▼
+                  Internet Destination
+             (Sees FAKE_IP, not real client IP)
+```
 
 ## Building and Running
 
@@ -85,3 +186,14 @@ go test ./...
 *   **Configuration:** Configuration can be provided via command-line flags or a YAML file.
 *   **Logging:** The server uses a structured logger for clear and informative output.
 *   **Error Handling:** The project uses custom error types defined in `pkg/common/errors.go`.
+
+## Design Principles
+
+*   **Modularity:** The project is divided into logical packages (`cmd`, `pkg`, `tests`, `specs`) to promote code organization and reusability.
+*   **Abstraction:** Interfaces are used extensively to define contracts between components, allowing for flexible and testable implementations.
+*   **Security by Design:** Security considerations are integrated into every phase of development, from design to implementation and testing.
+*   **Test-Driven Development (TDD):** The project emphasizes a comprehensive testing strategy, including unit, integration, and security tests.
+*   **Clear State Management:** Entities have well-defined lifecycles and state transitions to ensure predictable behavior.
+*   **Concurrency Safety:** Mutable states are protected by synchronization mechanisms to prevent race conditions.
+
+## Building and Running

@@ -26,6 +26,7 @@ func (l *LinuxConfigurator) CheckPrivileges() error {
 }
 
 // Setup configures network redirection rules (stub)
+// TODO: Implement this function
 func (l *LinuxConfigurator) Setup(config *ClientConfig) error {
 	return fmt.Errorf("Linux configurator not yet implemented")
 }
